@@ -7,46 +7,48 @@ import (
 )
 
 var (
-	Objects map[string]*Object
+	Connections map[string]*Connection
 )
 
-type Object struct {
-	ObjectId   string
-	Score      int64
-	PlayerName string
+type Connection struct {
+	ConnectionId string
+	Name         string
+	Address      string
+	Port         int
 }
 
 func init() {
-	Objects = make(map[string]*Object)
-	Objects["hjkhsbnmn123"] = &Object{"hjkhsbnmn123", 100, "astaxie"}
-	Objects["mjjkxsxsaa23"] = &Object{"mjjkxsxsaa23", 101, "someone"}
+	Connections = make(map[string]*Connection)
+	Connections["default"] = &Connection{"default", "local", "localhost", 27017}
 }
 
-func AddOne(object Object) (ObjectId string) {
-	object.ObjectId = "astaxie" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	Objects[object.ObjectId] = &object
-	return object.ObjectId
+func AddOne(Connection Connection) (ConnectionId string) {
+	Connection.ConnectionId = strconv.FormatInt(time.Now().UnixNano(), 10)
+	Connections[Connection.ConnectionId] = &Connection
+	return Connection.ConnectionId
 }
 
-func GetOne(ObjectId string) (object *Object, err error) {
-	if v, ok := Objects[ObjectId]; ok {
+func GetOne(ConnectionId string) (Connection *Connection, err error) {
+	if v, ok := Connections[ConnectionId]; ok {
 		return v, nil
 	}
-	return nil, errors.New("ObjectId Not Exist")
+	return nil, errors.New("ConnectionId Not Exist")
 }
 
-func GetAll() map[string]*Object {
-	return Objects
+func GetAll() map[string]*Connection {
+	return Connections
 }
 
-func Update(ObjectId string, Score int64) (err error) {
-	if v, ok := Objects[ObjectId]; ok {
-		v.Score = Score
+func Update(ConnectionId string, Name string, Address string, Port int) (err error) {
+	if v, ok := Connections[ConnectionId]; ok {
+		v.Name = Name
+		v.Address = Address
+		v.Port = Port
 		return nil
 	}
-	return errors.New("ObjectId Not Exist")
+	return errors.New("ConnectionId Not Exist")
 }
 
-func Delete(ObjectId string) {
-	delete(Objects, ObjectId)
+func Delete(ConnectionId string) {
+	delete(Connections, ConnectionId)
 }

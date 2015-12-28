@@ -1,41 +1,45 @@
 package controllers
 
 import (
-	"goMongodbAPI/models"
 	"encoding/json"
+	"goMongodbAPI/models"
+	"log"
+	"time"
 
 	"github.com/astaxie/beego"
+	"gopkg.in/mgo.v2"
+	// "gopkg.in/mgo.v2/bson"
 )
 
-// Operations about object
-type ObjectController struct {
+// Operations about connection
+type ConnectionController struct {
 	beego.Controller
 }
 
 // @Title create
-// @Description create object
-// @Param	body		body 	models.Object	true		"The object content"
-// @Success 200 {string} models.Object.Id
+// @Description create connection
+// @Param	body		body 	models.Connection	true		"The connection content"
+// @Success 200 {string} models.Connection.ConnectionId
 // @Failure 403 body is empty
 // @router / [post]
-func (o *ObjectController) Post() {
-	var ob models.Object
+func (o *ConnectionController) Post() {
+	var ob models.Connection
 	json.Unmarshal(o.Ctx.Input.RequestBody, &ob)
-	objectid := models.AddOne(ob)
-	o.Data["json"] = map[string]string{"ObjectId": objectid}
+	connectionid := models.AddOne(ob)
+	o.Data["json"] = map[string]string{"ConnectionId": connectionid}
 	o.ServeJson()
 }
 
 // @Title Get
-// @Description find object by objectid
-// @Param	objectId		path 	string	true		"the objectid you want to get"
-// @Success 200 {object} models.Object
-// @Failure 403 :objectId is empty
-// @router /:objectId [get]
-func (o *ObjectController) Get() {
-	objectId := o.Ctx.Input.Params[":objectId"]
-	if objectId != "" {
-		ob, err := models.GetOne(objectId)
+// @Description find connection by connectionid
+// @Param	connectionId		path 	string	true		"the connectionid you want to get"
+// @Success 200 {connection} models.Connection
+// @Failure 403 :connectionId is empty
+// @router /:connectionId [get]
+func (o *ConnectionController) Get() {
+	connectionId := o.Ctx.Input.Params[":connectionId"]
+	if connectionId != "" {
+		ob, err := models.GetOne(connectionId)
 		if err != nil {
 			o.Data["json"] = err
 		} else {
@@ -46,29 +50,29 @@ func (o *ObjectController) Get() {
 }
 
 // @Title GetAll
-// @Description get all objects
-// @Success 200 {object} models.Object
-// @Failure 403 :objectId is empty
+// @Description get all connections
+// @Success 200 {connection} models.Connection
+// @Failure 403 :connectionId is empty
 // @router / [get]
-func (o *ObjectController) GetAll() {
+func (o *ConnectionController) GetAll() {
 	obs := models.GetAll()
 	o.Data["json"] = obs
 	o.ServeJson()
 }
 
 // @Title update
-// @Description update the object
-// @Param	objectId		path 	string	true		"The objectid you want to update"
-// @Param	body		body 	models.Object	true		"The body"
-// @Success 200 {object} models.Object
-// @Failure 403 :objectId is empty
-// @router /:objectId [put]
-func (o *ObjectController) Put() {
-	objectId := o.Ctx.Input.Params[":objectId"]
-	var ob models.Object
+// @Description update the connection
+// @Param	connectionId		path 	string	true		"The connectionid you want to update"
+// @Param	body		body 	models.Connection	true		"The body"
+// @Success 200 {connection} models.Connection
+// @Failure 403 :connectionId is empty
+// @router /:connectionId [put]
+func (o *ConnectionController) Put() {
+	connectionId := o.Ctx.Input.Params[":connectionId"]
+	var ob models.Connection
 	json.Unmarshal(o.Ctx.Input.RequestBody, &ob)
 
-	err := models.Update(objectId, ob.Score)
+	err := models.Update(connectionId, ob.Name, ob.Address, ob.Port)
 	if err != nil {
 		o.Data["json"] = err
 	} else {
@@ -78,15 +82,57 @@ func (o *ObjectController) Put() {
 }
 
 // @Title delete
-// @Description delete the object
-// @Param	objectId		path 	string	true		"The objectId you want to delete"
+// @Description delete the connection
+// @Param	connectionId		path 	string	true		"The connectionId you want to delete"
 // @Success 200 {string} delete success!
-// @Failure 403 objectId is empty
-// @router /:objectId [delete]
-func (o *ObjectController) Delete() {
-	objectId := o.Ctx.Input.Params[":objectId"]
-	models.Delete(objectId)
+// @Failure 403 connectionId is empty
+// @router /:connectionId [delete]
+func (o *ConnectionController) Delete() {
+	connectionId := o.Ctx.Input.Params[":connectionId"]
+	models.Delete(connectionId)
 	o.Data["json"] = "delete success!"
 	o.ServeJson()
 }
 
+type Person struct {
+	Name  string
+	Phone string
+}
+
+// @Title Check
+// @Description tries to connect to mongodb
+// @Param	connectionId		path 	string	true		"the connectionId you want to connect"
+// @Success 200 {connection} models.Connection
+// @Failure 403 :connectionId is empty
+// @router /:connectionId/check [get]
+func (o *ConnectionController) Check() {
+	// http://blog.mongodb.org/post/80579086742/running-mongodb-queries-concurrently-with-go
+	connectionId := o.Ctx.Input.Params[":connectionId"]
+	if connectionId != "" {
+		ob, _ := models.GetOne(connectionId)
+		// We need this object to establish a session to our MongoDB.
+		mongoDBDialInfo := &mgo.DialInfo{
+			Addrs:   []string{ob.Address},
+			Timeout: 60 * time.Second,
+			// Username: AuthUserName,
+			// Password: AuthPassword,
+		}
+
+		// Create a session which maintains a pool of socket connections
+		// to our MongoDB.
+		session, err := mgo.DialWithInfo(mongoDBDialInfo)
+		if err != nil {
+			log.Fatalf("CreateSession: %s\n", err)
+		}
+		defer session.Close()
+
+		// Optional. Switch the session to a monotonic behavior.
+		session.SetMode(mgo.Monotonic, true)
+
+		// c := session.DB("test")
+		// cn, _ := c.CollectionNames()
+		dbs, _ := session.DatabaseNames()
+		o.Data["json"] = dbs
+	}
+	o.ServeJson()
+}

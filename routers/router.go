@@ -22,4 +22,5 @@ func init() {
 		),
 	)
 	beego.AddNamespace(ns)
+	beego.Router("/connection/:connectionid/check", &controllers.ConnectionController{}, "get:Check")
 }
