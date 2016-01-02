@@ -43,9 +43,37 @@ func init() {
 
 	beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"] = append(beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"],
 		beego.ControllerComments{
-			"Check",
-			`/:connectionId/check`,
+			"GetDatabases",
+			`/:connectionId/databases`,
 			[]string{"get"},
+			nil})
+
+	beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"] = append(beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"],
+		beego.ControllerComments{
+			"GetCollections",
+			`/:connectionId/:database/collections`,
+			[]string{"get"},
+			nil})
+
+	beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"] = append(beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"],
+		beego.ControllerComments{
+			"QueryCollection",
+			`/:connectionId/:database/:collection/query`,
+			[]string{"post"},
+			nil})
+
+	beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"] = append(beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"],
+		beego.ControllerComments{
+			"CreateCollection",
+			`/:connectionId/:database/:collection/create`,
+			[]string{"post"},
+			nil})
+
+	beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"] = append(beego.GlobalControllerRouter["goMongodbAPI/controllers:ConnectionController"],
+		beego.ControllerComments{
+			"InsertDocument",
+			`/:connectionId/:database/:collection/insert`,
+			[]string{"post"},
 			nil})
 
 }

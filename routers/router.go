@@ -16,11 +16,13 @@ import (
 func init() {
 	ns := beego.NewNamespace("/v1",
 		beego.NSNamespace("/connection",
-			beego.NSInclude(
+			beego.NSInclude( // NSInclude is designed for Annotation Router
 				&controllers.ConnectionController{},
 			),
 		),
 	)
 	beego.AddNamespace(ns)
-	beego.Router("/connection/:connectionid/check", &controllers.ConnectionController{}, "get:Check")
+
+	// beego.Router("/database/:connectionId", &controllers.DatabaseCallsController{}, "get:GetAll")
+	// beego.Router("/collection/:connectionId/:database", &controllers.CollectionCallsController{}, "get:GetAll")
 }

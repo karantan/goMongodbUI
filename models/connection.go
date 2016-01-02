@@ -15,11 +15,17 @@ type Connection struct {
 	Name         string
 	Address      string
 	Port         int
+	Username     string
+	Password     string
 }
 
 func init() {
 	Connections = make(map[string]*Connection)
-	Connections["default"] = &Connection{"default", "local", "localhost", 27017}
+	Connections["default"] = &Connection{
+		ConnectionId: "default",
+		Name:         "local",
+		Address:      "localhost",
+		Port:         27017}
 }
 
 func AddOne(Connection Connection) (ConnectionId string) {
