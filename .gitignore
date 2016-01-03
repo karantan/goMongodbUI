@@ -1,0 +1,3 @@
+*.memprof
+*.tmp
+swagger/
