@@ -27,8 +27,9 @@ func (o *ConnectionController) Post() {
 	// TODO: add validation
 	var ob models.Connection
 	json.Unmarshal(o.Ctx.Input.RequestBody, &ob)
-	connectionid := models.AddOne(ob)
-	o.Data["json"] = map[string]string{"ConnectionId": connectionid}
+	connection := models.AddOne(ob)
+	// o.Data["json"] = map[string]string{"ConnectionId": connectionid}
+	o.Data["json"] = connection
 	o.ServeJson()
 }
 
@@ -39,21 +40,14 @@ func (o *ConnectionController) Post() {
 // @Failure 400 :connectionId is invalid
 // @router /:connectionId [get]
 func (o *ConnectionController) Get() {
-	var err_msg string
 	connectionId := o.Ctx.Input.Params[":connectionId"]
-	if connectionId != "" {
-		ob, err := models.GetOne(connectionId)
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			o.Data["json"] = ob
-		}
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+	ob, err := models.GetOne(connectionId)
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
+
+	o.Data["json"] = ob
 
 	o.ServeJson()
 }
@@ -77,23 +71,16 @@ func (o *ConnectionController) GetAll() {
 // @Failure 400 :connectionId is invalid
 // @router /:connectionId [put]
 func (o *ConnectionController) Put() {
-	var err_msg string
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	var ob models.Connection
 	json.Unmarshal(o.Ctx.Input.RequestBody, &ob)
 
 	err := models.Update(connectionId, ob.Name, ob.Address, ob.Port)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		o.Data["json"] = "update success!"
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
-
+	o.Data["json"] = "update success!"
 	o.ServeJson()
 }
 
@@ -117,36 +104,29 @@ func (o *ConnectionController) Delete() {
 // @Failure 400 connectionId is invalid
 // @router /:connectionId/databases [get]
 func (o *ConnectionController) GetDatabases() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-			dbs, _ := session.DatabaseNames()
-			o.Data["json"] = dbs
-		}
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
+	}
+
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+	dbs, _ := session.DatabaseNames()
+	o.Data["json"] = dbs
 
 	o.ServeJson()
 }
@@ -159,39 +139,32 @@ func (o *ConnectionController) GetDatabases() {
 // @Failure 400 connectionId or database is invalid
 // @router /:connectionId/:database/collections [get]
 func (o *ConnectionController) GetCollections() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-			db := session.DB(database)
-			cn, _ := db.CollectionNames()
-			o.Data["json"] = cn
-		}
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
+	}
+
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+	db := session.DB(database)
+	cn, _ := db.CollectionNames()
+	o.Data["json"] = cn
 
 	o.ServeJson()
 }
@@ -206,8 +179,6 @@ func (o *ConnectionController) GetCollections() {
 // @Failure 400 connectionId or database or collection is invalid
 // @router /:connectionId/:database/:collection/query [post]
 func (o *ConnectionController) QueryCollection() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 	collection := o.Ctx.Input.Params[":collection"]
@@ -218,35 +189,30 @@ func (o *ConnectionController) QueryCollection() {
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-
-			//  convenient alias for a map[string]interface{} map, useful for dealing with BSON in a native way
-			var m []bson.M
-			db := session.DB(database).C(collection)
-			db.Find(query).All(&m)
-			o.Data["json"] = m
-		}
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
+	}
+
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+
+	//  convenient alias for a map[string]interface{} map, useful for dealing with BSON in a native way
+	var m []bson.M
+	db := session.DB(database).C(collection)
+	db.Find(query).All(&m)
+	o.Data["json"] = m
 
 	o.ServeJson()
 }
@@ -260,41 +226,34 @@ func (o *ConnectionController) QueryCollection() {
 // @Failure 400 connectionId or database or collection is invalid
 // @router /:connectionId/:database/:collection/create [post]
 func (o *ConnectionController) CreateCollection() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 	collection := o.Ctx.Input.Params[":collection"]
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-
-			collection_info := mgo.CollectionInfo{}
-			session.DB(database).C(collection).Create(&collection_info)
-			o.Data["json"] = "Collection created"
-		}
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
+	}
+
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+
+	collection_info := mgo.CollectionInfo{}
+	session.DB(database).C(collection).Create(&collection_info)
+	o.Data["json"] = "Collection created"
 
 	o.ServeJson()
 }
@@ -308,40 +267,33 @@ func (o *ConnectionController) CreateCollection() {
 // @Failure 400 connectionId or database or collection is invalid
 // @router /:connectionId/:database/:collection/drop [delete]
 func (o *ConnectionController) DropCollection() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 	collection := o.Ctx.Input.Params[":collection"]
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-
-			session.DB(database).C(collection).DropCollection()
-			o.Data["json"] = "Collection dropped"
-		}
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
+	}
+
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+
+	session.DB(database).C(collection).DropCollection()
+	o.Data["json"] = "Collection dropped"
 
 	o.ServeJson()
 }
@@ -356,8 +308,6 @@ func (o *ConnectionController) DropCollection() {
 // @Failure 400 connectionId or database or collection is invalid
 // @router /:connectionId/:database/:collection/insert [post]
 func (o *ConnectionController) InsertDocuments() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 	collection := o.Ctx.Input.Params[":collection"]
@@ -369,47 +319,38 @@ func (o *ConnectionController) InsertDocuments() {
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-
-			var json_msg []string
-			var msg string
-			for i, document := range documents {
-				if len(document) == 0 {
-					msg = fmt.Sprintf("Document #%d is empty. I refuse to insert empty document.", i+1)
-				} else {
-					err := session.DB(database).C(collection).Insert(document)
-					if err != nil {
-						err_msg = fmt.Sprintf("Error: (%s)", err)
-					} else {
-						msg = fmt.Sprintf("Document #%d inserted", i+1)
-					}
-				}
-				json_msg = append(json_msg, msg)
-			}
-			o.Data["json"] = json_msg
-		}
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
+	}
 
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+
+	var json_msg []string
+	var msg string
+	for i, document := range documents {
+		err := session.DB(database).C(collection).Insert(document)
+		if err != nil {
+			o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+			return
+		}
+		msg = fmt.Sprintf("Document #%d inserted", i+1)
+		json_msg = append(json_msg, msg)
+	}
+
+	o.Data["json"] = json_msg
 	o.ServeJson()
 }
 
@@ -423,8 +364,6 @@ func (o *ConnectionController) InsertDocuments() {
 // @Failure 400 connectionId or database or collection or document_selector is invalid
 // @router /:connectionId/:database/:collection/update [put]
 func (o *ConnectionController) UpdateDocuments() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 	collection := o.Ctx.Input.Params[":collection"]
@@ -434,41 +373,38 @@ func (o *ConnectionController) UpdateDocuments() {
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-			change := mgo.Change{
-				Update:    document["document"],
-				ReturnNew: true,
-			}
-			var result bson.M
-			info, err := session.DB(database).C(collection).Find(document["selector"]).Apply(change, &result)
-			if err != nil {
-				err_msg = fmt.Sprintf("Error: (%s)", err)
-			} else {
-				o.Data["json"] = info
-			}
-		}
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
 	}
 
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
 
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+	change := mgo.Change{
+		Update:    document["document"],
+		ReturnNew: true,
+	}
+
+	var result bson.M
+	info, err := session.DB(database).C(collection).Find(document["selector"]).Apply(change, &result)
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+
+	o.Data["json"] = info
 	o.ServeJson()
 }
 
@@ -483,8 +419,6 @@ func (o *ConnectionController) UpdateDocuments() {
 // @Failure 400 connectionId or database or collection or document_id is invalid
 // @router /:connectionId/:database/:collection/:document_id/update [put]
 func (o *ConnectionController) UpdateIdDocument() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 	collection := o.Ctx.Input.Params[":collection"]
@@ -500,38 +434,32 @@ func (o *ConnectionController) UpdateIdDocument() {
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-
-			err := session.DB(database).C(collection).UpdateId(oid, document)
-			if err != nil {
-				err_msg = fmt.Sprintf("Error: (%s)", err)
-			} else {
-				o.Data["json"] = "Document updated"
-			}
-
-		}
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
 	}
 
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+
+	err = session.DB(database).C(collection).UpdateId(oid, document)
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
 
+	o.Data["json"] = "Document updated"
 	o.ServeJson()
 }
 
@@ -545,8 +473,6 @@ func (o *ConnectionController) UpdateIdDocument() {
 // @Failure 400 connectionId or database or collection or document selector is invalid
 // @router /:connectionId/:database/:collection/remove [delete]
 func (o *ConnectionController) RemoveDocuments() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 	collection := o.Ctx.Input.Params[":collection"]
@@ -557,41 +483,34 @@ func (o *ConnectionController) RemoveDocuments() {
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-			if len(document_selector) == 0 {
-				o.Data["json"] = "I refuse to remove all documents. Use drop collection if you really want to remove all documents."
-			} else {
-				changeInfo, err := session.DB(database).C(collection).RemoveAll(document_selector)
-				if err != nil {
-					err_msg = fmt.Sprintf("Error: (%s)", err)
-				} else {
-					o.Data["json"] = changeInfo
-				}
-			}
-
-		}
-	}
-
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
+	}
 
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+	if len(document_selector) == 0 {
+		o.CustomAbort(400, "I refuse to remove all documents. Use drop collection if you really want to remove all documents.", err)
+		return
+	}
+	changeInfo, err := session.DB(database).C(collection).RemoveAll(document_selector)
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+	}
+
+	o.Data["json"] = changeInfo
 	o.ServeJson()
 }
 
@@ -605,8 +524,6 @@ func (o *ConnectionController) RemoveDocuments() {
 // @Failure 400 connectionId or database or collection or document_id is invalid
 // @router /:connectionId/:database/:collection/:document_id/remove [delete]
 func (o *ConnectionController) RemoveIdDocument() {
-	var err_msg string
-
 	connectionId := o.Ctx.Input.Params[":connectionId"]
 	database := o.Ctx.Input.Params[":database"]
 	collection := o.Ctx.Input.Params[":collection"]
@@ -619,37 +536,31 @@ func (o *ConnectionController) RemoveIdDocument() {
 
 	ob, err := models.GetOne(connectionId)
 	if err != nil {
-		err_msg = fmt.Sprintf("Error: (%s)", err)
-	} else {
-		mongoDBDialInfo := &mgo.DialInfo{
-			Addrs:    []string{ob.Address},
-			Timeout:  5 * time.Second,
-			Username: ob.Username,
-			Password: ob.Password,
-		}
-
-		session, err := mgo.DialWithInfo(mongoDBDialInfo)
-		defer session.Close()
-		if err != nil {
-			err_msg = fmt.Sprintf("Error: (%s)", err)
-		} else {
-			// Optional. Switch the session to a monotonic behavior.
-			session.SetMode(mgo.Monotonic, true)
-
-			err := session.DB(database).C(collection).RemoveId(oid)
-			if err != nil {
-				err_msg = fmt.Sprintf("Error: (%s)", err)
-			} else {
-				o.Data["json"] = "Document removed"
-			}
-
-		}
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	mongoDBDialInfo := &mgo.DialInfo{
+		Addrs:    []string{ob.Address},
+		Timeout:  5 * time.Second,
+		Username: ob.Username,
+		Password: ob.Password,
 	}
 
-	if err_msg != "" {
-		o.CustomAbort(400, err_msg)
+	session, err := mgo.DialWithInfo(mongoDBDialInfo)
+	defer session.Close()
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	session.SetMode(mgo.Monotonic, true)
+
+	err = session.DB(database).C(collection).RemoveId(oid)
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
 	}
 
+	o.Data["json"] = "Document removed"
 	o.ServeJson()
 }
