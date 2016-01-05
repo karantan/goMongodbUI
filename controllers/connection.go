@@ -75,7 +75,7 @@ func (o *ConnectionController) Put() {
 	var ob models.Connection
 	json.Unmarshal(o.Ctx.Input.RequestBody, &ob)
 
-	err := models.Update(connectionId, ob.Name, ob.Address, ob.Port)
+	err := models.Update(connectionId, ob.Name, ob.Address, ob.Port, ob.Username, ob.Password)
 	if err != nil {
 		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
 		return
@@ -92,7 +92,11 @@ func (o *ConnectionController) Put() {
 // @router /:connectionId [delete]
 func (o *ConnectionController) Delete() {
 	connectionId := o.Ctx.Input.Params[":connectionId"]
-	models.Delete(connectionId)
+	err := models.Delete(connectionId)
+	if err != nil {
+		o.CustomAbort(400, fmt.Sprintf("Error: (%s)", err))
+		return
+	}
 	o.Data["json"] = "delete success!"
 	o.ServeJson()
 }
@@ -502,7 +506,7 @@ func (o *ConnectionController) RemoveDocuments() {
 	// Optional. Switch the session to a monotonic behavior.
 	session.SetMode(mgo.Monotonic, true)
 	if len(document_selector) == 0 {
-		o.CustomAbort(400, "I refuse to remove all documents. Use drop collection if you really want to remove all documents.", err)
+		o.CustomAbort(400, "I refuse to remove all documents. Use drop collection if you really want to remove all documents.")
 		return
 	}
 	changeInfo, err := session.DB(database).C(collection).RemoveAll(document_selector)
